@@ -1,0 +1,60 @@
+asyncapi: 2.6.0
+id: urn:azure-intelligence-domain:supply:supply-intake
+info:
+  title: '[Supply] Supply Intake'
+  version: 1.0.0
+  description: 'What the supply domain takes in from other domains: OrderConfirmed, which supply-intake reserves
+    the order''s stock in the warehouse. A consumer contract: it only receives (ADR 0009, 0015).'
+  contact:
+    name: Supply Domain Team
+    url: https://github.com/azure-intelligence-domain/supply-intake
+  license:
+    name: MIT
+    url: https://github.com/azure-intelligence-domain/supply-intake/blob/main/LICENSE
+tags:
+- name: supply
+  description: Supply domain.
+externalDocs:
+  description: EventCatalog entry of the supply domain
+  url: https://azure-intelligence-domain.github.io/eventcatalog/docs/domains/supply/1.0.0
+defaultContentType: application/cloudevents+json
+servers:
+  demo-event-grid:
+    $ref: https://raw.githubusercontent.com/azure-intelligence-domain/contracts/v1.2.0/asyncapi/landscape.asyncapi.yaml#/components/servers/demo-event-grid
+channels:
+  order.process-api-order.event.order-confirmed:
+    description: OrderConfirmed, published by the Order Process API; supply-intake reserves the order's stock in
+      the warehouse.
+    servers:
+    - demo-event-grid
+    x-configurations:
+      demo:
+        eventGrid:
+          topic: evgt-intplat-order
+          eventType: com.acme.order.confirmed
+    subscribe:
+      operationId: receiveOrderConfirmed
+      summary: Receive OrderConfirmed.
+      description: supply-intake receives OrderConfirmed through the platform's event intake (subscription supply-intake)
+        and reserves the order's stock in the warehouse, through the gateway.
+      security:
+      - platformIntake: []
+      tags:
+      - name: supply
+        description: Supply domain.
+      externalDocs:
+        description: The supply-intake flow
+        url: https://github.com/azure-intelligence-domain/supply-intake
+      x-consumers:
+        demo:
+        - supply-intake
+      message:
+        $ref: https://raw.githubusercontent.com/azure-intelligence-domain/process-api-order/v1.1.0/asyncapi.yaml#/components/messages/orderConfirmed
+components:
+  securitySchemes:
+    platformIntake:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: The platform's event intake delivers with an Entra ID token of the gateway's managed identity
+        for the intplat-platform-apis application; the Logic App's OAuth policy lets only that in (ADR 0016).
