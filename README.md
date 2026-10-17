@@ -3,7 +3,7 @@
 The **supply domain's intake flow** ([ADR 0015](https://github.com/azure-intelligence-domain/ai-intelligence-domain/blob/main/docs/adr/0015-one-intake-per-domain.md)):
 what the supply domain takes in from other domains. A Logic App (Consumption), owned by the
 **supply-team**. It receives **OrderConfirmed** and reserves the order's stock, through the gateway, with the
-WMS System API; the System API then publishes StockReserved.
+WMS System API; the System API then publishes StockReserved. It also receives **OrderCancelled** (below).
 
 | File | What |
 |---|---|
@@ -35,6 +35,20 @@ The flow maps the order domain's event onto the WMS System API's contract; nothi
 ```mermaid
 flowchart LR
     ev["OrderConfirmed<br/>(order domain contract)"] -- "workflow.json" --> req["/wms/stock-reservations<br/>(WMS System API contract)"]
+```
+
+## When an order is cancelled (since 1.1.0)
+
+**OrderCancelled** names what each domain has for the order ([ADR 0018](https://github.com/azure-intelligence-domain/ai-intelligence-domain/blob/main/docs/adr/0018-cancellation-reaches-every-domain.md)).
+If it carries `reservationId`, the flow releases the reserved stock: `DELETE /wms/stock-reservations/{reservationId}?reason=`, and the WMS System API
+publishes **StockReleased**. Without `reservationId` the WMS has nothing for this order yet, and the run ends
+`200` without a call.
+
+```mermaid
+flowchart LR
+    oc[["OrderCancelled<br/>reservationId"]] --> c{"reservationId set?"}
+    c -- yes --> d["DELETE /wms/stock-reservations/{reservationId}"] --> f[["StockReleased"]]
+    c -- no --> n["nothing to undo: 200"]
 ```
 
 ## When a delivery fails

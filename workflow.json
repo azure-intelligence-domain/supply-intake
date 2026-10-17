@@ -76,6 +76,52 @@
               }
             }
           }
+        },
+        "OrderCancelled": {
+          "case": "com.acme.order.cancelled",
+          "actions": {
+            "Has_reservationId": {
+              "type": "If",
+              "runAfter": {},
+              "expression": {
+                "and": [
+                  {
+                    "not": {
+                      "equals": [
+                        "@coalesce(outputs('CloudEvent')?['data']?['reservationId'], '')",
+                        ""
+                      ]
+                    }
+                  }
+                ]
+              },
+              "actions": {
+                "Release_stock": {
+                  "type": "Http",
+                  "inputs": {
+                    "method": "DELETE",
+                    "uri": "@{parameters('gateway')}/wms/stock-reservations/@{encodeUriComponent(outputs('CloudEvent')?['data']?['reservationId'])}?reason=@{encodeUriComponent(coalesce(outputs('CloudEvent')?['data']?['reason'], 'Order cancelled.'))}",
+                    "headers": {
+                      "Content-Type": "application/json",
+                      "Correlation-Id": "@{outputs('CloudEvent')?['correlationid']}",
+                      "traceparent": "@{coalesce(triggerOutputs()?['headers']?['traceparent'], '')}"
+                    },
+                    "authentication": {
+                      "type": "ManagedServiceIdentity",
+                      "identity": "__IDENTITY__",
+                      "audience": "__AUDIENCE__"
+                    },
+                    "retryPolicy": {
+                      "type": "none"
+                    }
+                  }
+                }
+              },
+              "else": {
+                "actions": {}
+              }
+            }
+          }
         }
       },
       "default": {
